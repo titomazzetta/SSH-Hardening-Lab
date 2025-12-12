@@ -24,3 +24,4 @@ id_ed25519*
 # Auth / environment files
 auth.log
 .env.DS_Store
+.DS_Store
