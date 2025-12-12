@@ -9,10 +9,12 @@
 
 ## 📌 Overview
 
-This lab demonstrates end-to-end **SSH security engineering** on a Debian Linux server.
+This project demonstrates end-to-end **SSH security engineering** on a Debian Linux server.
 
+The project was developed as a personal security engineering lab and portfolio artifact, while also fulfilling academic coursework requirements, with an emphasis on real-world defensive and detection workflows.
+
+The design prioritizes observability, reproducibility, and detection signal quality over purely preventive controls.
 It combines:
-
 - 🔐 SSH service hardening (multiple profiles)
 - 🚫 Automated blocking of brute-force attacks (Fail2Ban + UFW)
 - 🔴 Red-team attack simulation (Nmap + Hydra)
@@ -363,9 +365,9 @@ No private keys, passwords, or secrets are included in this repository.
 
 ---
 
-## 🎓 Learning Outcomes
+## ✅ Skills Demonstrated
 
-By completing this lab, you demonstrate:
+This project demonstrates practical experience in:
 
 - Practical Linux SSH hardening skills
 - Understanding of brute-force attack patterns
@@ -376,9 +378,10 @@ By completing this lab, you demonstrate:
 
 ---
 
-## 👤 Author
+## 👤 Author & Maintainer
 
-**Tito Mazzeta** – SSH Hardening Lab – Fullstack Cybersecurity Project  
+**Tito Mazzetta** 
+Security Engineering • Detection Engineering • Linux
 
 - GitHub: https://github.com/titomazzetta  
 - LinkedIn: https://www.linkedin.com/in/tito-carlo-piero-mazzetta-16a14264  
