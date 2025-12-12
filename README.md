@@ -25,9 +25,9 @@ It combines:
 
 It is designed so that:
 
-- A **professor** can clone → deploy → attack → validate → ingest logs  
+- A **security reviewer** can clone → deploy → attack → validate → ingest logs  
 - A **hiring manager** can evaluate practical skills, detection maturity, and automation capability  
-- A **student** can replicate and extend the scenario on their own VM  
+- A **practitioner** can replicate and extend the scenario on their own VM  
 
 ---
 
