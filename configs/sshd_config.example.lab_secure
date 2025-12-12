@@ -1,0 +1,42 @@
+##########################################
+# sshd_config.example.lab_secure
+# Profile: Lab Secure Defaults
+# Use for: student labs, demo environments,
+#          controlled testing where SSH must
+#          be reachable but not overly strict.
+##########################################
+
+Port 22
+Protocol 2
+
+# Authentication
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Only allow the secadmin user (adjust as needed)
+AllowUsers secadmin
+
+# Key exchange, ciphers, and MACs (modern + safe for lab)
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com
+
+# Brute-force resistance
+MaxAuthTries 3
+LoginGraceTime 30
+
+# Idle session control
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# Disable legacy/unused features for lab
+X11Forwarding no
+AllowTcpForwarding no
+PermitTunnel no
+GatewayPorts no
+
+# Logging
+LogLevel VERBOSE

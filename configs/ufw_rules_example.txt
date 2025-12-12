@@ -1,0 +1,13 @@
+# Example UFW rules for the hardened SSH server.
+# These commands are intended to be run manually with sudo.
+
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# Allow SSH from anywhere (for lab). For production, restrict this.
+sudo ufw allow OpenSSH
+
+# Example: restrict SSH to a specific trusted IP
+# sudo ufw allow from 203.0.113.10 to any port 22 proto tcp
+
+sudo ufw enable

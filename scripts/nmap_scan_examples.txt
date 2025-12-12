@@ -1,0 +1,16 @@
+# Nmap SSH Scan Examples (Reference)
+
+# Basic SSH version detection
+nmap -sV -p 22 <TARGET_IP>
+
+# Run default scripts and version detection on SSH
+nmap -sC -sV -p 22 <TARGET_IP>
+
+# Full TCP connect scan of top 1000 ports
+nmap -sT <TARGET_IP>
+
+# Scan with OS detection and service version
+nmap -A <TARGET_IP>
+
+# Output to all major formats (for later analysis)
+nmap -sV -p 22 -oA ssh_scan <TARGET_IP>

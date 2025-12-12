@@ -1,0 +1,44 @@
+##########################################
+# sshd_config.example.production_hardened
+# Profile: Production-Style Hardening
+# Use for: more restrictive, bastion-style or
+#          internet-facing hosts in realistic
+#          environments (adapt IPs/users).
+#
+# NOTE:
+#   - Consider moving SSH to a non-standard port.
+#   - Consider restricting by IP with firewall + AllowUsers.
+##########################################
+
+Port 22
+Protocol 2
+
+PermitRootLogin no
+
+# Strong preference for key-based auth only
+PubkeyAuthentication yes
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Strongly restrict allowed users (adjust per org)
+AllowUsers secadmin
+
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-ctr,aes192-ctr
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com
+
+# Very strict brute-force resistance
+MaxAuthTries 3
+LoginGraceTime 20
+MaxStartups 10:30:60
+
+ClientAliveInterval 180
+ClientAliveCountMax 2
+
+X11Forwarding no
+AllowTcpForwarding no
+PermitTunnel no
+GatewayPorts no
+
+LogLevel VERBOSE

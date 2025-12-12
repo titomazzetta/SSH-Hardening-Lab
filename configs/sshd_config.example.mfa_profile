@@ -1,0 +1,45 @@
+##########################################
+# sshd_config.example.mfa_profile
+# Profile: MFA-Enabled SSH
+# Use for: lab environments where PAM-based
+#          2FA (e.g., Google Authenticator)
+#          is configured on the system.
+#
+# NOTE:
+#   - Requires additional PAM + google-authenticator setup:
+#     * Install: sudo apt install libpam-google-authenticator
+#     * Configure: /etc/pam.d/sshd to include pam_google_authenticator.so
+##########################################
+
+Port 22
+Protocol 2
+
+PermitRootLogin no
+
+# Public key + MFA via keyboard-interactive (e.g., TOTP)
+PubkeyAuthentication yes
+PasswordAuthentication no
+ChallengeResponseAuthentication yes
+UsePAM yes
+
+# Require both publickey and keyboard-interactive (2FA)
+AuthenticationMethods publickey,keyboard-interactive
+
+AllowUsers secadmin
+
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com
+
+MaxAuthTries 3
+LoginGraceTime 30
+
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+X11Forwarding no
+AllowTcpForwarding no
+PermitTunnel no
+GatewayPorts no
+
+LogLevel VERBOSE

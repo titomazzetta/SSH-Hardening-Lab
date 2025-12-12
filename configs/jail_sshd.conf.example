@@ -1,0 +1,11 @@
+# Example Fail2Ban jail for SSH
+# Copy to /etc/fail2ban/jail.d/sshd.conf and restart fail2ban.
+
+[sshd]
+enabled  = true
+port     = ssh
+filter   = sshd
+logpath  = /var/log/auth.log
+maxretry = 5
+findtime = 600
+bantime  = 3600

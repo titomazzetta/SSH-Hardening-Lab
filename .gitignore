@@ -1,0 +1,26 @@
+# Logs and reports
+*.log
+*.csv
+*.sha256
+ssh_reports/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Images / screenshots
+screenshots/*.png
+screenshots/*.jpg
+screenshots/*.jpeg
+
+# SSH / key material
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*.pem
+*.key
+*.secret
+
+# Auth / environment files
+auth.log
+.env

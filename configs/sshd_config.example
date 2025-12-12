@@ -1,0 +1,30 @@
+##########################################
+# sshd_config.example
+# Baseline hardened config (lab-friendly)
+# This is roughly equivalent to lab_secure,
+# kept for backward compatibility.
+##########################################
+
+Port 22
+Protocol 2
+
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM yes
+
+AllowUsers secadmin
+
+MaxAuthTries 3
+LoginGraceTime 30
+
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+X11Forwarding no
+AllowTcpForwarding no
+PermitTunnel no
+GatewayPorts no
+
+LogLevel VERBOSE
