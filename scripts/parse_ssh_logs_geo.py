@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """
 Role: BLUE TEAM
+
 Purpose:
-  Parse SSH authentication logs from /var/log/auth.log,
-  extract key security fields, compute a danger score,
-  and export results to CSV for SIEM/Splunk ingestion.
+  Parse SSH authentication logs and export structured CSV telemetry
+  for SIEM / Splunk ingestion.
+
+Features:
+  - Supports --logfile and --output (no hardcoded paths)
+  - Designed to be run with sudo ONLY for log access
+  - Writes output exactly where the wrapper specifies
+  - No side effects (no symlinks, no directories created)
 """
 
+import argparse
 import re
 import csv
 import os
-import hashlib
 from datetime import datetime
-
-LOGFILE = "/var/log/auth.log"
-OUTPUT_DIR = "/root/ssh_reports"
-SSH_PORT = 22
 
 # ---------------- REGEX PATTERNS ---------------- #
 
@@ -43,16 +45,11 @@ TIMESTAMP_RE = re.compile(
     r"^(?P<ts>\d{4}-\d{2}-\d{2}T[0-9:\.\-+]+)"
 )
 
+SSH_PORT = 22
+
 # ---------------- UTILS ---------------- #
 
-def compute_sha256(path):
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-def danger_score(fails):
+def danger_score(fails: int) -> int:
     if fails >= 10:
         return 90
     if fails >= 6:
@@ -64,20 +61,31 @@ def danger_score(fails):
 # ---------------- MAIN ---------------- #
 
 def main():
-    if not os.path.exists(LOGFILE):
-        raise FileNotFoundError(LOGFILE)
+    parser = argparse.ArgumentParser(description="Parse SSH auth logs to CSV")
+    parser.add_argument(
+        "--logfile",
+        default="/var/log/auth.log",
+        help="Path to SSH auth log (default: /var/log/auth.log)"
+    )
+    parser.add_argument(
+        "--output",
+        required=True,
+        help="Full path to output CSV file"
+    )
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    args = parser.parse_args()
 
-    now = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = f"{OUTPUT_DIR}/ssh_events_{now}.csv"
-    latest_path = f"{OUTPUT_DIR}/ssh_events_latest.csv"
+    logfile = args.logfile
+    output_csv = args.output
+
+    if not os.path.exists(logfile):
+        raise FileNotFoundError(logfile)
 
     fail_counts = {}
     total_attempts = {}
     rows = []
 
-    with open(LOGFILE, "r", errors="ignore") as f:
+    with open(logfile, "r", errors="ignore") as f:
         for line in f:
             ts_match = TIMESTAMP_RE.search(line)
             timestamp = ts_match.group("ts") if ts_match else ""
@@ -139,21 +147,13 @@ def main():
         print("[!] No SSH events matched. CSV not written.")
         return
 
-    with open(csv_path, "w", newline="") as csvfile:
+    with open(output_csv, "w", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
         writer.writeheader()
         writer.writerows(rows)
 
-    sha = compute_sha256(csv_path)
-    with open(csv_path + ".sha256", "w") as f:
-        f.write(sha)
-
-    if os.path.islink(latest_path):
-        os.unlink(latest_path)
-    os.symlink(os.path.basename(csv_path), latest_path)
-
     print("[+] Parsing complete")
-    print(f"    CSV:  {csv_path}")
+    print(f"    CSV:  {output_csv}")
     print(f"    Rows: {len(rows)}")
 
 if __name__ == "__main__":

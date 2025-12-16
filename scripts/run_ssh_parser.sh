@@ -2,15 +2,16 @@
 #
 # Role: BLUE TEAM
 # Purpose:
-#   Run the SSH log parser reliably and produce Splunk-ready CSV telemetry.
-#   - Runs parser with sudo (required to read /var/log/auth.log)
-#   - Extracts the actual CSV path from parser output (no timestamp mismatch)
-#   - Computes SHA-256 hash for integrity
-#   - Maintains "latest" symlinks in the same output directory
+#   Run SSH log parsing as the non-root user (secadmin) and write reports to:
+#     /home/secadmin/ssh_reports/
+#   Elevate ONLY the parser execution to read /var/log/auth.log.
 #
-# Usage:
+# Usage (as secadmin):
 #   cd ~/SSH-Hardening-Lab
-#   sudo ./scripts/run_ssh_parser.sh
+#   ./scripts/run_ssh_parser.sh
+#
+# Optional:
+#   LOGFILE=/var/log/auth.log ./scripts/run_ssh_parser.sh
 #
 
 set -euo pipefail
@@ -18,43 +19,53 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARSER="${SCRIPT_DIR}/parse_ssh_logs_geo.py"
 
-if [[ ! -f "$PARSER" ]]; then
-  echo "[!] Parser not found: $PARSER"
+if [[ ! -f "${PARSER}" ]]; then
+  echo "[!] Parser not found: ${PARSER}"
   exit 1
 fi
 
-echo "[*] Running SSH log parser..."
+# Where reports should live (secadmin-owned)
+REPORT_DIR="${HOME}/ssh_reports"
+mkdir -p "${REPORT_DIR}"
 
-# Run parser as root to access /var/log/auth.log. Capture stdout so we can parse the CSV path.
-OUT="$(sudo -E python3 "$PARSER")"
-echo "$OUT"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+OUT_CSV="${REPORT_DIR}/ssh_events_${TIMESTAMP}.csv"
+OUT_HASH="${OUT_CSV}.sha256"
 
-# Extract the CSV path from the parser's stdout line: "    CSV:  /path/to/file.csv"
-CSV_PATH="$(echo "$OUT" | awk -F':  ' '/^    CSV:/{print $2}')"
+# Allow overriding logfile path without editing code (parser must support --logfile to use this)
+LOGFILE="${LOGFILE:-/var/log/auth.log}"
 
-if [[ -z "${CSV_PATH}" ]]; then
-  echo "[!] Could not determine CSV path from parser output."
-  echo "[!] Expected a line like: '    CSV:  /root/ssh_reports/ssh_events_YYYYMMDD_HHMMSS.csv'"
+echo "[*] Running SSH log parser (sudo only for auth.log read)..."
+echo "    Parser:  ${PARSER}"
+echo "    Logfile: ${LOGFILE}"
+echo "    Output:  ${OUT_CSV}"
+
+# Prefer non-interactive sudo; fail fast with a clear message if NOPASSWD isn't set
+if ! sudo -n true 2>/dev/null; then
+  echo "[!] sudo requires a password (non-interactive sudo not configured)."
+  echo "[!] Fix: add a visudo rule for the parser (recommended), or run manually with sudo."
+  echo "    Example (visudo):"
+  echo "      secadmin ALL=(root) NOPASSWD: /usr/bin/python3 /home/secadmin/SSH-Hardening-Lab/scripts/parse_ssh_logs_geo.py *"
   exit 1
 fi
 
-if [[ ! -f "${CSV_PATH}" ]]; then
-  echo "[!] CSV file not found at reported path: ${CSV_PATH}"
+# Run parser with sudo, but write output to secadmin-owned path
+# NOTE: parser must support --output, and optionally --logfile.
+sudo -n python3 "${PARSER}" --output "${OUT_CSV}" --logfile "${LOGFILE}"
+
+if [[ ! -f "${OUT_CSV}" ]]; then
+  echo "[!] Expected CSV not found: ${OUT_CSV}"
   exit 1
 fi
 
 echo "[*] Computing SHA-256 hash..."
-sudo sha256sum "${CSV_PATH}" | sudo tee "${CSV_PATH}.sha256" >/dev/null
+sha256sum "${OUT_CSV}" > "${OUT_HASH}"
 
-DIR="$(dirname "${CSV_PATH}")"
-CSV_FILE="$(basename "${CSV_PATH}")"
-HASH_FILE="$(basename "${CSV_PATH}.sha256")"
-
-# Maintain latest symlinks in the output directory
-sudo ln -sf "${CSV_FILE}" "${DIR}/ssh_events_latest.csv"
-sudo ln -sf "${HASH_FILE}" "${DIR}/ssh_events_latest.csv.sha256"
+# Maintain "latest" symlinks (in secadmin-owned directory)
+ln -sf "$(basename "${OUT_CSV}")"  "${REPORT_DIR}/ssh_events_latest.csv"
+ln -sf "$(basename "${OUT_HASH}")" "${REPORT_DIR}/ssh_events_latest.csv.sha256"
 
 echo "[+] Done."
-echo "    CSV:  ${CSV_PATH}"
-echo "    Hash: ${CSV_PATH}.sha256"
-echo "    Latest symlink: ${DIR}/ssh_events_latest.csv"
+echo "    CSV:  ${OUT_CSV}"
+echo "    Hash: ${OUT_HASH}"
+echo "    Latest symlink: ${REPORT_DIR}/ssh_events_latest.csv"
