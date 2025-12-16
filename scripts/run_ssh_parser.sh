@@ -2,48 +2,59 @@
 #
 # Role: BLUE TEAM
 # Purpose:
-#   Wrapper script to run the SSH log parser in a safe, repeatable way.
-#   - Ensures output directory exists
-#   - Adds a timestamp to each CSV
-#   - Computes a SHA-256 hash for integrity
-#   - Maintains a 'latest' symlink for convenience
+#   Run the SSH log parser reliably and produce Splunk-ready CSV telemetry.
+#   - Runs parser with sudo (required to read /var/log/auth.log)
+#   - Extracts the actual CSV path from parser output (no timestamp mismatch)
+#   - Computes SHA-256 hash for integrity
+#   - Maintains "latest" symlinks in the same output directory
 #
 # Usage:
-#   Edit SERVER_IP below, then run:
-#     ./scripts/run_ssh_parser.sh
+#   cd ~/SSH-Hardening-Lab
+#   sudo ./scripts/run_ssh_parser.sh
 #
 
 set -euo pipefail
 
-# >>> EDIT THIS <<<
-# Set this to the IP address of your SSH server (the Debian VM running sshd)
-SERVER_IP="127.0.0.1"
-SSH_PORT="22"
-
-# Directory to store reports (for secadmin user)
-REPORT_DIR="${HOME}/ssh_reports"
-mkdir -p "${REPORT_DIR}"
-
-# Resolve script directory so we can call the Python parser reliably
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARSER="${SCRIPT_DIR}/parse_ssh_logs_geo.py"
 
-TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-OUT_CSV="${REPORT_DIR}/ssh_events_${TIMESTAMP}.csv"
-OUT_HASH="${OUT_CSV}.sha256"
+if [[ ! -f "$PARSER" ]]; then
+  echo "[!] Parser not found: $PARSER"
+  exit 1
+fi
 
 echo "[*] Running SSH log parser..."
-python3 "${SCRIPT_DIR}/parse_ssh_logs_geo.py"     --server-ip "${SERVER_IP}"     --ssh-port "${SSH_PORT}"     --output "${OUT_CSV}"
+
+# Run parser as root to access /var/log/auth.log. Capture stdout so we can parse the CSV path.
+OUT="$(sudo -E python3 "$PARSER")"
+echo "$OUT"
+
+# Extract the CSV path from the parser's stdout line: "    CSV:  /path/to/file.csv"
+CSV_PATH="$(echo "$OUT" | awk -F':  ' '/^    CSV:/{print $2}')"
+
+if [[ -z "${CSV_PATH}" ]]; then
+  echo "[!] Could not determine CSV path from parser output."
+  echo "[!] Expected a line like: '    CSV:  /root/ssh_reports/ssh_events_YYYYMMDD_HHMMSS.csv'"
+  exit 1
+fi
+
+if [[ ! -f "${CSV_PATH}" ]]; then
+  echo "[!] CSV file not found at reported path: ${CSV_PATH}"
+  exit 1
+fi
 
 echo "[*] Computing SHA-256 hash..."
-sha256sum "${OUT_CSV}" > "${OUT_HASH}"
+sudo sha256sum "${CSV_PATH}" | sudo tee "${CSV_PATH}.sha256" >/dev/null
 
-cd "${REPORT_DIR}"
+DIR="$(dirname "${CSV_PATH}")"
+CSV_FILE="$(basename "${CSV_PATH}")"
+HASH_FILE="$(basename "${CSV_PATH}.sha256")"
 
-# Update "latest" symlinks
-ln -sf "$(basename "${OUT_CSV}")" ssh_events_latest.csv
-ln -sf "$(basename "${OUT_HASH}")" ssh_events_latest.csv.sha256
+# Maintain latest symlinks in the output directory
+sudo ln -sf "${CSV_FILE}" "${DIR}/ssh_events_latest.csv"
+sudo ln -sf "${HASH_FILE}" "${DIR}/ssh_events_latest.csv.sha256"
 
-echo "[+] Parsing complete."
-echo "    CSV:  ${OUT_CSV}"
-echo "    Hash: ${OUT_HASH}"
-echo "    Latest symlink: ${REPORT_DIR}/ssh_events_latest.csv"
+echo "[+] Done."
+echo "    CSV:  ${CSV_PATH}"
+echo "    Hash: ${CSV_PATH}.sha256"
+echo "    Latest symlink: ${DIR}/ssh_events_latest.csv"
