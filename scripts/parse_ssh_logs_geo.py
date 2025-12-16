@@ -11,41 +11,70 @@ Features:
   - Designed to be run with sudo ONLY for log access
   - Writes output exactly where the wrapper specifies
   - No side effects (no symlinks, no directories created)
+  - ALWAYS writes a CSV (header-only if no matches)
+  - Detects MFA success via keyboard-interactive/pam
 """
 
 import argparse
 import re
 import csv
 import os
-from datetime import datetime
+import sys
 
 # ---------------- REGEX PATTERNS ---------------- #
 
+TIMESTAMP_RE = re.compile(r"^(?P<ts>\d{4}-\d{2}-\d{2}T[0-9:\.\-+]+)")
+
 FAILED_PASSWORD_RE = re.compile(
     r"Failed password for (?P<user>\S+) from (?P<src_ip>\d+\.\d+\.\d+\.\d+) port (?P<src_port>\d+)",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 FAILED_PUBLICKEY_RE = re.compile(
     r"Failed publickey for (?P<user>\S+) from (?P<src_ip>\d+\.\d+\.\d+\.\d+)",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 PAM_AUTH_FAILURE_RE = re.compile(
     r"pam_unix\(sshd:auth\): authentication failure.*rhost=(?P<src_ip>\d+\.\d+\.\d+\.\d+).*user=(?P<user>\S+)",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
 ACCEPTED_PASSWORD_RE = re.compile(
     r"Accepted password for (?P<user>\S+) from (?P<src_ip>\d+\.\d+\.\d+\.\d+)",
-    re.IGNORECASE
+    re.IGNORECASE,
 )
 
-TIMESTAMP_RE = re.compile(
-    r"^(?P<ts>\d{4}-\d{2}-\d{2}T[0-9:\.\-+]+)"
+# MFA / TOTP via PAM typically logs this
+ACCEPTED_KEYBOARD_INTERACTIVE_RE = re.compile(
+    r"Accepted keyboard-interactive/pam for (?P<user>\S+) from (?P<src_ip>\d+\.\d+\.\d+\.\d+)",
+    re.IGNORECASE,
 )
 
-SSH_PORT = 22
+# Optional: key-based success
+ACCEPTED_PUBLICKEY_RE = re.compile(
+    r"Accepted publickey for (?P<user>\S+) from (?P<src_ip>\d+\.\d+\.\d+\.\d+)",
+    re.IGNORECASE,
+)
+
+# ---------------- CONSTANTS ---------------- #
+
+DEFAULT_SSH_PORT = 22
+
+FIELDNAMES = [
+    "timestamp",
+    "src_ip",
+    "src_port",
+    "dst_port",
+    "username",
+    "event_status",
+    "event_type",
+    "fail_count",
+    "total_attempts",
+    "src_country",
+    "src_city",
+    "danger_score",
+]
 
 # ---------------- UTILS ---------------- #
 
@@ -65,21 +94,34 @@ def main():
     parser.add_argument(
         "--logfile",
         default="/var/log/auth.log",
-        help="Path to SSH auth log (default: /var/log/auth.log)"
+        help="Path to SSH auth log (default: /var/log/auth.log)",
     )
     parser.add_argument(
         "--output",
         required=True,
-        help="Full path to output CSV file"
+        help="Full path to output CSV file",
+    )
+    parser.add_argument(
+        "--ssh-port",
+        type=int,
+        default=DEFAULT_SSH_PORT,
+        help="Destination SSH port to record in CSV (default: 22)",
     )
 
     args = parser.parse_args()
-
     logfile = args.logfile
     output_csv = args.output
+    ssh_port = args.ssh_port
 
     if not os.path.exists(logfile):
-        raise FileNotFoundError(logfile)
+        print(f"[!] Logfile not found: {logfile}", file=sys.stderr)
+        sys.exit(2)
+
+    out_dir = os.path.dirname(os.path.abspath(output_csv)) or "."
+    if not os.path.isdir(out_dir):
+        print(f"[!] Output directory does not exist: {out_dir}", file=sys.stderr)
+        print("[!] Create it in the wrapper (recommended).", file=sys.stderr)
+        sys.exit(2)
 
     fail_counts = {}
     total_attempts = {}
@@ -115,8 +157,20 @@ def main():
                 user = m["user"]
                 src_ip = m["src_ip"]
 
+            elif (m := ACCEPTED_KEYBOARD_INTERACTIVE_RE.search(line)):
+                event_type = "accepted_mfa"
+                status = "success"
+                user = m["user"]
+                src_ip = m["src_ip"]
+
             elif (m := ACCEPTED_PASSWORD_RE.search(line)):
                 event_type = "accepted_password"
+                status = "success"
+                user = m["user"]
+                src_ip = m["src_ip"]
+
+            elif (m := ACCEPTED_PUBLICKEY_RE.search(line)):
+                event_type = "accepted_publickey"
                 status = "success"
                 user = m["user"]
                 src_ip = m["src_ip"]
@@ -124,37 +178,43 @@ def main():
             else:
                 continue
 
+            if not src_ip:
+                continue
+
             total_attempts[src_ip] = total_attempts.get(src_ip, 0) + 1
             if status == "failed":
                 fail_counts[src_ip] = fail_counts.get(src_ip, 0) + 1
 
-            rows.append({
-                "timestamp": timestamp,
-                "src_ip": src_ip,
-                "src_port": src_port,
-                "dst_port": SSH_PORT,
-                "username": user,
-                "event_status": status,
-                "event_type": event_type,
-                "fail_count": fail_counts.get(src_ip, 0),
-                "total_attempts": total_attempts.get(src_ip, 0),
-                "src_country": "",
-                "src_city": "",
-                "danger_score": danger_score(fail_counts.get(src_ip, 0))
-            })
+            fails_for_ip = fail_counts.get(src_ip, 0)
 
-    if not rows:
-        print("[!] No SSH events matched. CSV not written.")
-        return
+            rows.append(
+                {
+                    "timestamp": timestamp,
+                    "src_ip": src_ip,
+                    "src_port": src_port,
+                    "dst_port": ssh_port,
+                    "username": user,
+                    "event_status": status,
+                    "event_type": event_type,
+                    "fail_count": fails_for_ip,
+                    "total_attempts": total_attempts.get(src_ip, 0),
+                    "src_country": "",
+                    "src_city": "",
+                    "danger_score": danger_score(fails_for_ip),
+                }
+            )
 
+    # ALWAYS write a CSV (header-only if zero rows)
     with open(output_csv, "w", newline="") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=rows[0].keys())
+        writer = csv.DictWriter(csvfile, fieldnames=FIELDNAMES)
         writer.writeheader()
-        writer.writerows(rows)
+        if rows:
+            writer.writerows(rows)
 
     print("[+] Parsing complete")
     print(f"    CSV:  {output_csv}")
     print(f"    Rows: {len(rows)}")
+
 
 if __name__ == "__main__":
     main()
