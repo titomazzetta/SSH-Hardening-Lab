@@ -1,27 +1,50 @@
-# Logs and reports
-*.log
+# =========================
+# Runtime / Generated Data
+# =========================
+
+# SSH log parser outputs
+ssh_reports/
 *.csv
 *.sha256
-ssh_reports/
 
-# Python cache
-__pycache__/
-*.pyc
+# Geo-IP runtime cache
+scripts/geo_cache.json
 
-# SSH / key material
-id_rsa*
-id_ecdsa*
-id_ed25519*
-*.pem
-*.key
-*.secret
+# =========================
+# OS / Editor Noise
+# =========================
 
-# Auth / environment files
-auth.log
-.env
+# macOS
 .DS_Store
 
-# Generated SSH parser artifacts
-screenshots/ssh_reports/
-screenshots/*.csv
-screenshots/*.sha256
+# VS Code
+.vscode/
+*.code-workspace
+
+# =========================
+# Python
+# =========================
+
+__pycache__/
+*.pyc
+*.pyo
+
+# =========================
+# Logs
+# =========================
+
+*.log
+
+# =========================
+# Secrets (never commit)
+# =========================
+
+# SSH private keys only
+id_rsa
+id_ed25519
+id_*_ed25519
+*.pem
+*.key
+
+# Google Authenticator secrets
+.google_authenticator
