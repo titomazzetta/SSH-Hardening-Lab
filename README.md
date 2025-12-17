@@ -84,6 +84,7 @@ Blue-team scripts live in `scripts/`.
 
 A Python detection script that:
 
+- Log parsing is handled by parse_ssh_logs_geo.py, which produces normalized, hash-verified CSV output suitable for SIEM ingestion.
 - Reads `/var/log/auth.log`
 - Extracts SSH authentication events:
   - Failed public key attempts
@@ -93,6 +94,7 @@ A Python detection script that:
 - Tracks per-IP and per-user state
 - Computes a `danger_score` (0–100) based on failure volume
 - Outputs normalized CSV telemetry suitable for SIEM ingestion
+
 
 #### `run_ssh_parser.sh`
 
@@ -134,6 +136,7 @@ Scripts used for **authorized lab testing only**:
   - Produce detection telemetry
 
 These scripts are intentionally simple and repeatable to ensure consistent test conditions.
+A small, curated wordlist is included strictly for controlled lab-based brute-force testing and Fail2Ban validation.
 
 ---
 
