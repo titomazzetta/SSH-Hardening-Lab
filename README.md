@@ -76,15 +76,12 @@ All profiles enforce:
 
 ---
 
-### 🔍 Detection Engineering
+## 🔍 Detection Engineering
 
 Blue-team scripts live in `scripts/`.
 
-#### `parse_ssh_logs_geo.py`
+### `parse_ssh_logs_geo.py`
 
-A Python detection script that:
-
-- Log parsing is handled by parse_ssh_logs_geo.py, which produces normalized, hash-verified CSV output suitable for SIEM ingestion.
 - Reads `/var/log/auth.log`
 - Extracts SSH authentication events:
   - Failed public key attempts
@@ -95,10 +92,7 @@ A Python detection script that:
 - Computes a `danger_score` (0–100) based on failure volume
 - Outputs normalized CSV telemetry suitable for SIEM ingestion
 
-
-#### `run_ssh_parser.sh`
-
-A wrapper script that:
+### `run_ssh_parser.sh`
 
 - Requires root privileges (to read `auth.log`)
 - Generates timestamped CSV reports
@@ -122,7 +116,7 @@ A wrapper script that:
 
 ---
 
-### 🧪 Attack Simulation (Red Team)
+## 🧪 Attack Simulation (Red Team)
 
 Scripts used for **authorized lab testing only**:
 
@@ -136,11 +130,10 @@ Scripts used for **authorized lab testing only**:
   - Produce detection telemetry
 
 These scripts are intentionally simple and repeatable to ensure consistent test conditions.
-A small, curated wordlist is included strictly for controlled lab-based brute-force testing and Fail2Ban validation.
 
 ---
 
-### 📊 SIEM / Splunk Integration
+## 📊 SIEM / Splunk Integration
 
 CSV output from `run_ssh_parser.sh` is designed for **direct Splunk ingestion**.
 
@@ -189,7 +182,7 @@ Each parser run generates a **new timestamped CSV**, enabling direct comparison 
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/<your-username>/SSH-Hardening-Lab.git
+git clone https://github.com/titomazzetta/SSH-Hardening-Lab.git
 cd SSH-Hardening-Lab
 sudo ./deploy.sh
 ```
@@ -220,15 +213,34 @@ CSV output appears in:
 
 ---
 
-### Optional MFA
+## 🔑 SSH Client Configuration (Recommended)
 
-MFA setup is documented in:
+For convenience and repeatability, this project recommends **SSH host aliasing** on the client machine. This ensures the correct SSH identity is always presented to the hardened server without requiring the `-i` flag on each connection.
+
+Add the following entry to your local SSH client configuration file:
 
 ```text
-docs/ssh_hardening_playbook.md
+~/.ssh/config
 ```
 
-After MFA is enabled, repeat attack and parsing steps to generate post-MFA telemetry.
+```ssh
+Host ssh-lab
+  HostName 192.168.50.245
+  User secadmin
+  IdentityFile ~/.ssh/ssh_lab_ed25519
+  IdentitiesOnly yes
+```
+
+Connect using:
+
+```bash
+ssh ssh-lab
+```
+
+**Notes:**
+- SSH host aliasing is client-side only and does not modify the server.
+- Each client machine must define its own alias.
+- Alternatively, the identity file may be specified explicitly using `ssh -i`.
 
 ---
 
@@ -259,36 +271,38 @@ Security Engineering • Detection Engineering • Linux
 - GitHub: https://github.com/titomazzetta  
 - LinkedIn: https://www.linkedin.com/in/tito-carlo-piero-mazzetta-16a14264
 
-
-
 ---
 
 ## 📦 Artifact Export (CSV + Hash)
 
-`run_ssh_parser.sh` now writes reports into the repo for clean demos:
+`run_ssh_parser.sh` writes reports into the repo for clean demos:
 
 - `./screenshots/ssh_reports/ssh_events_<timestamp>.csv`
 - `./screenshots/ssh_reports/ssh_events_<timestamp>.csv.sha256`
-- `./screenshots/ssh_reports/ssh_events_latest.csv` (copy of newest CSV)
-- `./screenshots/ssh_reports/ssh_events_latest.csv.sha256` (copy of newest hash)
+- `./screenshots/ssh_reports/ssh_events_latest.csv`
+- `./screenshots/ssh_reports/ssh_events_latest.csv.sha256`
 
 ### Verify integrity (Linux)
+
 ```bash
 cd ./screenshots/ssh_reports
 sha256sum -c ssh_events_latest.csv.sha256
 ```
 
 ### Verify integrity (macOS)
+
 ```bash
 cd ./screenshots/ssh_reports
 shasum -a 256 -c ssh_events_latest.csv.sha256
 ```
 
 ### Copy off the server (from your Mac / attacker box)
+
 ```bash
 scp -i ~/.ssh/<your_key> secadmin@<SERVER_IP>:~/SSH-Hardening-Lab/screenshots/ssh_reports/ssh_events_latest.csv .
 scp -i ~/.ssh/<your_key> secadmin@<SERVER_IP>:~/SSH-Hardening-Lab/screenshots/ssh_reports/ssh_events_latest.csv.sha256 .
 ```
 
-Note: `scp` requires the SSH server to have an SFTP subsystem enabled. The MFA profile includes:
+Note: `scp` requires the SSH server to have an SFTP subsystem enabled.  
+The MFA profile includes:
 `Subsystem sftp internal-sftp`.
