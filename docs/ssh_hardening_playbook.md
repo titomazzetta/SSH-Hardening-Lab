@@ -139,21 +139,21 @@ What this does:
 - Parses `/var/log/auth.log` via `parse_ssh_logs_geo.py`
 - Enriches entries with geo-IP (if internet is available)
 - Computes a simple `danger_score`
-- Writes timestamped output into `~/ssh_reports/`
+- Writes timestamped output into the authoritative store `~/ssh_reports/` and exports UX copies into `./screenshots/ssh_reports/`
 - Computes a SHA-256 hash of each CSV
 - Updates `ssh_events_latest.csv` symlink
 
 Check results:
 
 ```bash
-ls -l ~/ssh_reports/
-cat ~/ssh_reports/ssh_events_latest.csv | head
-cat ~/ssh_reports/ssh_events_latest.csv.sha256
+ls -l ./screenshots/ssh_reports/
+cat ./screenshots/ssh_reports/ssh_events_latest.csv | head
+cat ./screenshots/ssh_reports/ssh_events_latest.csv.sha256
 ```
 
 Screenshots:
 
-- Directory listing of `~/ssh_reports/`
+- Directory listing of `./screenshots/ssh_reports/` (UX copies for demo / Splunk upload)
 - First few lines of the CSV
 - SHA-256 hash file
 
@@ -347,3 +347,29 @@ Recommended screenshots for the report / submission:
 This provides a full lifecycle story:
 - design → hardening → MFA → validation → telemetry.
 
+
+
+---
+
+## 📦 Artifact Export + Hash Verification
+
+The parser wrapper writes directly into the repo so you can SCP artifacts easily:
+
+```bash
+./scripts/run_ssh_parser.sh
+ls -lah ./screenshots/ssh_reports
+```
+
+Verify integrity on the server:
+
+```bash
+cd ./screenshots/ssh_reports
+sha256sum -c ssh_events_latest.csv.sha256
+```
+
+Verify integrity on macOS after copying:
+
+```bash
+cd ./screenshots/ssh_reports
+shasum -a 256 -c ssh_events_latest.csv.sha256
+```

@@ -1,16 +1,16 @@
-# Nmap SSH Scan Examples (Reference)
+# Nmap SSH Scan Examples (Lab / Authorized Only)
 
-# Basic SSH version detection
-nmap -sV -p 22 <TARGET_IP>
+## Basic banner + version detection
+nmap -sV -p 22 <SERVER_IP>
 
-# Run default scripts and version detection on SSH
-nmap -sC -sV -p 22 <TARGET_IP>
+## Default scripts (safe) + version detection
+nmap -sC -sV -p 22 <SERVER_IP>
 
-# Full TCP connect scan of top 1000 ports
-nmap -sT <TARGET_IP>
+## Enumerate SSH algorithms (useful to validate crypto policy)
+nmap --script ssh2-enum-algos -p 22 <SERVER_IP>
 
-# Scan with OS detection and service version
-nmap -A <TARGET_IP>
+## Check supported auth methods (helps confirm key-only vs password vs MFA posture)
+nmap --script ssh-auth-methods --script-args="ssh.user=secadmin" -p 22 <SERVER_IP>
 
-# Output to all major formats (for later analysis)
-nmap -sV -p 22 -oA ssh_scan <TARGET_IP>
+## Full TCP connect scan (top ports) – noisy, but useful for exposure checks
+nmap -sT <SERVER_IP>

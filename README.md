@@ -256,3 +256,36 @@ Security Engineering • Detection Engineering • Linux
 - GitHub: https://github.com/titomazzetta  
 - LinkedIn: https://www.linkedin.com/in/tito-carlo-piero-mazzetta-16a14264
 
+
+
+---
+
+## 📦 Artifact Export (CSV + Hash)
+
+`run_ssh_parser.sh` now writes reports into the repo for clean demos:
+
+- `./screenshots/ssh_reports/ssh_events_<timestamp>.csv`
+- `./screenshots/ssh_reports/ssh_events_<timestamp>.csv.sha256`
+- `./screenshots/ssh_reports/ssh_events_latest.csv` (copy of newest CSV)
+- `./screenshots/ssh_reports/ssh_events_latest.csv.sha256` (copy of newest hash)
+
+### Verify integrity (Linux)
+```bash
+cd ./screenshots/ssh_reports
+sha256sum -c ssh_events_latest.csv.sha256
+```
+
+### Verify integrity (macOS)
+```bash
+cd ./screenshots/ssh_reports
+shasum -a 256 -c ssh_events_latest.csv.sha256
+```
+
+### Copy off the server (from your Mac / attacker box)
+```bash
+scp -i ~/.ssh/<your_key> secadmin@<SERVER_IP>:~/SSH-Hardening-Lab/screenshots/ssh_reports/ssh_events_latest.csv .
+scp -i ~/.ssh/<your_key> secadmin@<SERVER_IP>:~/SSH-Hardening-Lab/screenshots/ssh_reports/ssh_events_latest.csv.sha256 .
+```
+
+Note: `scp` requires the SSH server to have an SFTP subsystem enabled. The MFA profile includes:
+`Subsystem sftp internal-sftp`.

@@ -8,11 +8,6 @@ ssh_reports/
 __pycache__/
 *.pyc
 
-# Images / screenshots
-screenshots/*.png
-screenshots/*.jpg
-screenshots/*.jpeg
-
 # SSH / key material
 id_rsa*
 id_ecdsa*
@@ -23,5 +18,10 @@ id_ed25519*
 
 # Auth / environment files
 auth.log
-.env.DS_Store
+.env
 .DS_Store
+
+# Generated SSH parser artifacts
+screenshots/ssh_reports/
+screenshots/*.csv
+screenshots/*.sha256

@@ -1,14 +1,15 @@
 ##########################################
 # sshd_config.example.mfa_profile
-# Profile: MFA-Enabled SSH
-# Use for: lab environments where PAM-based
-#          2FA (e.g., Google Authenticator)
-#          is configured on the system.
+# Profile: MFA-Enabled SSH (Public Key + TOTP)
 #
-# NOTE:
-#   - Requires additional PAM + google-authenticator setup:
-#     * Install: sudo apt install libpam-google-authenticator
-#     * Configure: /etc/pam.d/sshd to include pam_google_authenticator.so
+# Key points:
+#   - Requires BOTH a valid SSH public key AND a TOTP code (PAM).
+#   - Supports scp/sftp (Subsystem sftp internal-sftp) so you can export artifacts.
+#
+# Prereqs (handled by deploy.sh when choosing MFA profile):
+#   - Install: libpam-google-authenticator
+#   - PAM: /etc/pam.d/sshd includes pam_google_authenticator.so
+#   - Enroll user: google-authenticator (creates ~/.google_authenticator)
 ##########################################
 
 Port 22
@@ -16,24 +17,33 @@ Protocol 2
 
 PermitRootLogin no
 
-# Public key + MFA via keyboard-interactive (e.g., TOTP)
+# --- Authentication ---
 PubkeyAuthentication yes
 PasswordAuthentication no
+
+# OpenSSH has migrated terminology; keep both for compatibility.
 ChallengeResponseAuthentication yes
+KbdInteractiveAuthentication yes
+
 UsePAM yes
 
-# Require both publickey and keyboard-interactive (2FA)
+# Require BOTH public key and keyboard-interactive (TOTP) for login
 AuthenticationMethods publickey,keyboard-interactive
 
+# Restrict to a single admin user (deploy.sh will set this dynamically)
 AllowUsers secadmin
 
+# --- Crypto policy (reasonable lab defaults) ---
 KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
 Ciphers chacha20-poly1305@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
 MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com
 
+# --- Brute-force hardening ---
 MaxAuthTries 3
 LoginGraceTime 30
+MaxStartups 10:30:60
 
+# --- Session hygiene ---
 ClientAliveInterval 300
 ClientAliveCountMax 2
 
@@ -41,5 +51,8 @@ X11Forwarding no
 AllowTcpForwarding no
 PermitTunnel no
 GatewayPorts no
+
+# Needed for scp/sftp artifact export
+Subsystem sftp internal-sftp
 
 LogLevel VERBOSE

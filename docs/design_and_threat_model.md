@@ -143,3 +143,13 @@ The attacker is assumed to:
 - Export Splunk dashboards as XML/JSON for easier replication.
 - Integrate with another SIEM (e.g., ELK / OpenSearch) as a second target.
 
+
+
+## Operational Note: Artifact Export Over SCP/SFTP
+
+In an MFA + key-only posture, exporting parser artifacts typically uses `scp`/SFTP. Ensure:
+
+- The SSH server advertises an SFTP subsystem (`Subsystem sftp internal-sftp`), and
+- The MFA profile does not disable SFTP unintentionally.
+
+The project’s hash files are generated using a **relative filename** so integrity checks work on both Linux (`sha256sum -c`) and macOS (`shasum -a 256 -c`) after export.

