@@ -2,10 +2,11 @@
 # Runtime / Generated Data
 # =========================
 
-# SSH log parser outputs
+# SSH log parser outputs (authoritative)
 ssh_reports/
-*.csv
-*.sha256
+
+# UX/demo outputs inside repo
+screenshots/ssh_reports/
 
 # Geo-IP runtime cache
 scripts/geo_cache.json
@@ -20,6 +21,14 @@ scripts/geo_cache.json
 # VS Code
 .vscode/
 *.code-workspace
+
+# Vim / swap / backup
+*.swp
+*.swo
+*.swpx
+*~
+*.bak
+*.tmp
 
 # =========================
 # Python
@@ -39,7 +48,7 @@ __pycache__/
 # Secrets (never commit)
 # =========================
 
-# SSH private keys only
+# SSH private keys
 id_rsa
 id_ed25519
 id_*_ed25519
